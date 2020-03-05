@@ -38,7 +38,7 @@ type InputFunc struct {
 
 func runningWorkerTestFunc(input interface{}) {
 	in := input.(InputFunc)
-	time.Sleep(WaitSec)
+	time.Sleep(WaitSec * time.Second)
 	in.result.Add(in.value)
 	in.wg.Done()
 }
@@ -58,10 +58,10 @@ func TestRunningWorker(t *testing.T) {
 		result := Result{}
 		expect := 0
 		wg := &sync.WaitGroup{}
+		begin := time.Now()
 		for i := 0; i < NumOfWorker; i++ {
 			value := 1 << i
 			//Get time before
-			begin := time.Now()
 			wg.Add(1)
 			worker.Go(runningWorkerTestFunc, &InputFunc{value, &result, wg})
 			//check this function is not blocked
@@ -75,6 +75,12 @@ func TestRunningWorker(t *testing.T) {
 		wg.Wait()
 		//Check result
 		So(result.Result(), ShouldEqual, expect)
+		end := time.Now()
+		//result : WaitSec < do all action < WaitSec + 1 sec
+		expectTimeGreater := begin.Add(WaitSec * time.Second)
+		So(end.After(expectTimeGreater), ShouldBeTrue)
+		expectTimeLess := begin.Add((WaitSec + 1) * time.Second)
+		So(end.Before(expectTimeLess), ShouldBeTrue)
 
 		//Check stop
 		worker.Stop()
@@ -86,5 +92,35 @@ func TestRunningWorker(t *testing.T) {
 	})
 
 	Convey("Check running worker num", t, func() {
+		_worker, err := gorp.RunWorker(NumOfWorker)
+		So(err, ShouldBeNil)
+		worker = _worker
+		result := Result{}
+		expect := 0
+		wg := &sync.WaitGroup{}
+		begin := time.Now()
+		for i := 0; i < NumOfWorker+1; i++ {
+			value := 1 << i
+			//Get time before
+			wg.Add(1)
+			worker.Go(runningWorkerTestFunc, &InputFunc{value, &result, wg})
+			//check this function is not blocked
+			end := time.Now()
+			expectTimeLess := begin.Add(time.Second)
+			So(end.Before(expectTimeLess), ShouldBeTrue)
+			//update expect value
+			expect += value
+		}
+
+		wg.Wait()
+		//Check result
+		So(result.Result(), ShouldEqual, expect)
+		end := time.Now()
+		//result : WaitSec * 2 < do all action < WaitSec * 2 + 1 sec
+		// Because 1 action was blocked
+		expectTimeGreater := begin.Add(WaitSec * 2 * time.Second)
+		So(end.After(expectTimeGreater), ShouldBeTrue)
+		expectTimeLess := begin.Add(((WaitSec * 2) + 1) * time.Second)
+		So(end.Before(expectTimeLess), ShouldBeTrue)
 	})
 }
