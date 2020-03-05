@@ -36,10 +36,16 @@ type testRunningActor struct {
 	wg     *sync.WaitGroup
 }
 
+/* Define actions */
 func (actor *testRunningActor) Do() {
 	time.Sleep(WaitSec * time.Second)
 	actor.result.Add(actor.value)
 	actor.wg.Done()
+}
+
+func runningWorkerTestFunc(input interface{}) {
+	in := input.(*testRunningActor)
+	in.Do()
 }
 
 type testFuncCloseActor struct {
@@ -50,10 +56,15 @@ func (actor *testFuncCloseActor) Do() {
 	actor.in++
 }
 
-func TestRunningWorker(t *testing.T) {
+func runningWorkerTestFuncClose(input interface{}) {
+	in := input.(*testFuncCloseActor)
+	in.Do()
+}
+
+func TestRunningWorkerWithGoAction(t *testing.T) {
 	var worker gorp.GoRoutineWorker
 	//Run worker
-	Convey("Check Worker is running normally", t, func() {
+	Convey("Check Worker is running with GoAction normally", t, func() {
 		_worker, err := gorp.RunWorker(NumOfWorker)
 		So(err, ShouldBeNil)
 		worker = _worker
@@ -65,7 +76,7 @@ func TestRunningWorker(t *testing.T) {
 			value := 1 << i
 			//Get time before
 			wg.Add(1)
-			worker.Go(&testRunningActor{value, &result, wg})
+			worker.GoAction(&testRunningActor{value, &result, wg})
 			//check this function is not blocked
 			end := time.Now()
 			expectTimeLess := begin.Add(time.Second)
@@ -88,17 +99,64 @@ func TestRunningWorker(t *testing.T) {
 		worker.Stop()
 		actor := testFuncCloseActor{}
 		value := actor.in
-		worker.Go(&actor)
+		worker.GoAction(&actor)
 		//actor won't update actor.in param because there is no worker routine
 		time.Sleep(time.Millisecond * 200)
 		//check result
 		So(actor.in, ShouldEqual, value)
 	})
+}
 
-	Convey("Check running worker num", t, func() {
+func TestRunningWorkerWithGo(t *testing.T) {
+	var worker gorp.GoRoutineWorker
+	//Run worker
+	Convey("Check Worker is running with Go normally", t, func() {
 		_worker, err := gorp.RunWorker(NumOfWorker)
 		So(err, ShouldBeNil)
 		worker = _worker
+		result := Result{}
+		expect := 0
+		wg := &sync.WaitGroup{}
+		begin := time.Now()
+		for i := 0; i < NumOfWorker; i++ {
+			value := 1 << i
+			//Get time before
+			wg.Add(1)
+			worker.Go(runningWorkerTestFunc, &testRunningActor{value, &result, wg})
+			//check this function is not blocked
+			end := time.Now()
+			expectTimeLess := begin.Add(time.Second)
+			So(end.Before(expectTimeLess), ShouldBeTrue)
+
+			//update expect value
+			expect += value
+		}
+		wg.Wait()
+		//Check result
+		So(result.Result(), ShouldEqual, expect)
+		end := time.Now()
+		//result : WaitSec < do all action < WaitSec + 1 sec
+		expectTimeGreater := begin.Add(WaitSec * time.Second)
+		So(end.After(expectTimeGreater), ShouldBeTrue)
+		expectTimeLess := begin.Add((WaitSec + 1) * time.Second)
+		So(end.Before(expectTimeLess), ShouldBeTrue)
+
+		//Check stop
+		worker.Stop()
+		actor := testFuncCloseActor{}
+		value := actor.in
+		worker.Go(runningWorkerTestFuncClose, &actor)
+		//actor won't update actor.in param because there is no worker routine
+		time.Sleep(time.Millisecond * 200)
+		//check result
+		So(actor.in, ShouldEqual, value)
+	})
+}
+
+func TestWorkerLimit(t *testing.T) {
+	Convey("Check running worker num", t, func() {
+		worker, err := gorp.RunWorker(NumOfWorker)
+		So(err, ShouldBeNil)
 		result := Result{}
 		expect := 0
 		wg := &sync.WaitGroup{}
@@ -107,7 +165,7 @@ func TestRunningWorker(t *testing.T) {
 			value := 1 << i
 			//Get time before
 			wg.Add(1)
-			worker.Go(&testRunningActor{value, &result, wg})
+			worker.GoAction(&testRunningActor{value, &result, wg})
 			//check this function is not blocked
 			end := time.Now()
 			expectTimeLess := begin.Add(time.Second)

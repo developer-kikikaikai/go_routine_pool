@@ -8,13 +8,15 @@ import (
 	"fmt"
 )
 
+//Please create struct which has input parameter of go routine
 type Action interface {
 	Do()
 }
 
 type GoRoutineWorker interface {
+	GoAction(actor Action)
 	//TODO: can we use variable parameters?
-	Go(actor Action)
+	Go(routine func(interface{}), input interface{})
 	Stop()
 }
 
@@ -38,10 +40,15 @@ func (worker *goRoutineWorker) run(numOfWorker int) error {
 	return errors.New("Not implement yet")
 }
 
-func (worker *goRoutineWorker) Go(actor Action) {
+func (worker *goRoutineWorker) GoAction(actor Action) {
 	//send routine + input to thread
 	fmt.Printf("Not implement yet\n")
 	actor.Do()
+}
+
+func (worker *goRoutineWorker) Go(routine func(interface{}), input interface{}) {
+	fmt.Printf("Not implement yet\n")
+	routine(input)
 }
 
 func (worker *goRoutineWorker) Stop() {
