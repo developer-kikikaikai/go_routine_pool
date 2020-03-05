@@ -6,6 +6,7 @@ package gorp
 import (
 	"fmt"
 	"sync"
+	"time"
 )
 
 //Please create struct which has input parameter of go routine
@@ -31,11 +32,11 @@ type transportEvent interface {
 }
 
 type transportAction struct {
-	action Action
+	actor Action
 }
 
 func (t *transportAction) do() (doesContinue bool) {
-	t.action.Do()
+	t.actor.Do()
 	doesContinue = true
 	return
 }
@@ -59,30 +60,58 @@ func (t *transportClose) do() (doesContinue bool) {
 	return
 }
 
-type goRoutineWorker struct {
+type workerAction interface {
+	send(event transportEvent)
+	wait()
+}
+
+type workerNormalAction struct {
 	ch chan transportEvent
 	wg *sync.WaitGroup //work group to stop worker
 }
 
+func (w *workerNormalAction) send(event transportEvent) {
+	w.ch <- event
+}
+func (w *workerNormalAction) wait() {
+	w.wg.Wait()
+}
+
+type workerNoAction struct {
+}
+
+func (w *workerNoAction) send(event transportEvent) {
+}
+func (w *workerNoAction) wait() {
+}
+
+type goRoutineWorker struct {
+	ch     chan transportEvent
+	wg     *sync.WaitGroup //work group to stop worker
+	action workerAction
+}
+
 func newWorker() *goRoutineWorker {
 	worker := goRoutineWorker{}
-	worker.ch = make(chan transportEvent, 0)
+	worker.ch = make(chan transportEvent)
 	worker.wg = &sync.WaitGroup{}
+	worker.action = &workerNormalAction{worker.ch, worker.wg}
 	return &worker
 }
 
 func (worker *goRoutineWorker) run(numOfWorker int) {
 	//run thread
 	for i := 0; i < numOfWorker; i++ {
-		go func(worker *goRoutineWorker) {
-			//count work group to manage stopping
-			worker.wg.Add(1)
-			//run routine until stop
-			worker.runWorker()
-			//worker is done!
-			worker.wg.Done()
-		}(worker)
+		go workerMain(worker)
 	}
+}
+
+func workerMain(worker *goRoutineWorker) {
+	//count work group to manage stopping
+	worker.wg.Add(1)
+	//run routine until stop
+	worker.runWorker()
+	worker.wg.Done()
 }
 
 func (worker *goRoutineWorker) runWorker() {
@@ -99,16 +128,27 @@ func (worker *goRoutineWorker) runWorker() {
 }
 
 func (worker *goRoutineWorker) GoAction(actor Action) {
-	//send routine + input to thread
-	fmt.Printf("Not implement yet\n")
-	actor.Do()
+	//send transportAction event to worker
+	fmt.Printf("begin:%v\n", time.Now())
+	event := &transportAction{
+		actor: actor,
+	}
+	worker.action.send(event)
+	fmt.Printf("end:%v\n", time.Now())
 }
 
 func (worker *goRoutineWorker) Go(routine func(interface{}), input interface{}) {
-	fmt.Printf("Not implement yet\n")
-	routine(input)
+	//send transportAction event to worker
+	event := &transportFunction{
+		routine: routine,
+		input:   input,
+	}
+	worker.action.send(event)
 }
 
 func (worker *goRoutineWorker) Stop() {
-	//stop worker
+	//send transportClose event to worker
+	worker.action.send(&transportClose{})
+	worker.action.wait()
+	worker.action = &workerNoAction{}
 }

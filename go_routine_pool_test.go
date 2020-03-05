@@ -1,10 +1,12 @@
 package gorp_test
 
 import (
-	"github.com/developer-kikikaikai/go_routine_pool"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
+
+	gorp "github.com/developer-kikikaikai/go_routine_pool"
 
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -76,23 +78,28 @@ func TestRunningWorkerWithGoAction(t *testing.T) {
 			value := 1 << i
 			//Get time before
 			wg.Add(1)
+			before := time.Now()
 			worker.GoAction(&testRunningActor{value, &result, wg})
 			//check this function is not blocked
 			end := time.Now()
-			expectTimeLess := begin.Add(time.Second)
+			expectTimeLess := before.Add(time.Second)
+			fmt.Printf("endtime:%v, expectTimeLess:%v\n", end, expectTimeLess)
 			So(end.Before(expectTimeLess), ShouldBeTrue)
 
 			//update expect value
 			expect += value
 		}
+		exit := time.Now()
 		wg.Wait()
 		//Check result
 		So(result.Result(), ShouldEqual, expect)
 		end := time.Now()
 		//result : WaitSec < do all action < WaitSec + 1 sec
 		expectTimeGreater := begin.Add(WaitSec * time.Second)
+		fmt.Printf("endtime:%v, expectTimeGreater:%v\n", end, expectTimeGreater)
 		So(end.After(expectTimeGreater), ShouldBeTrue)
-		expectTimeLess := begin.Add((WaitSec + 1) * time.Second)
+		expectTimeLess := exit.Add((WaitSec + 1) * time.Second)
+		fmt.Printf("endtime:%v, expectTimeLess:%v\n", end, expectTimeLess)
 		So(end.Before(expectTimeLess), ShouldBeTrue)
 
 		//Check stop
@@ -122,23 +129,28 @@ func TestRunningWorkerWithGo(t *testing.T) {
 			value := 1 << i
 			//Get time before
 			wg.Add(1)
+			before := time.Now()
 			worker.Go(runningWorkerTestFunc, &testRunningActor{value, &result, wg})
 			//check this function is not blocked
 			end := time.Now()
-			expectTimeLess := begin.Add(time.Second)
+			expectTimeLess := before.Add(time.Second)
+			fmt.Printf("endtime:%v, expectTimeLess:%v\n", end, expectTimeLess)
 			So(end.Before(expectTimeLess), ShouldBeTrue)
 
 			//update expect value
 			expect += value
 		}
+		exit := time.Now()
 		wg.Wait()
 		//Check result
 		So(result.Result(), ShouldEqual, expect)
 		end := time.Now()
 		//result : WaitSec < do all action < WaitSec + 1 sec
 		expectTimeGreater := begin.Add(WaitSec * time.Second)
+		fmt.Printf("endtime:%v, expectTimeGreater:%v\n", end, expectTimeGreater)
 		So(end.After(expectTimeGreater), ShouldBeTrue)
-		expectTimeLess := begin.Add((WaitSec + 1) * time.Second)
+		expectTimeLess := exit.Add((WaitSec + 1) * time.Second)
+		fmt.Printf("endtime:%v, expectTimeLess:%v\n", end, expectTimeLess)
 		So(end.Before(expectTimeLess), ShouldBeTrue)
 
 		//Check stop
@@ -165,15 +177,18 @@ func TestWorkerLimit(t *testing.T) {
 			value := 1 << i
 			//Get time before
 			wg.Add(1)
+			before := time.Now()
 			worker.GoAction(&testRunningActor{value, &result, wg})
 			//check this function is not blocked
 			end := time.Now()
-			expectTimeLess := begin.Add(time.Second)
+			expectTimeLess := before.Add(time.Second)
+			fmt.Printf("endtime:%v, expectTimeLess:%v\n", end, expectTimeLess)
 			So(end.Before(expectTimeLess), ShouldBeTrue)
 			//update expect value
 			expect += value
 		}
 
+		exit := time.Now()
 		wg.Wait()
 		//Check result
 		So(result.Result(), ShouldEqual, expect)
@@ -181,8 +196,10 @@ func TestWorkerLimit(t *testing.T) {
 		//result : WaitSec * 2 < do all action < WaitSec * 2 + 1 sec
 		// Because 1 action was blocked
 		expectTimeGreater := begin.Add(WaitSec * 2 * time.Second)
+		fmt.Printf("endtime:%v, expectTimeGreater:%v\n", end, expectTimeGreater)
 		So(end.After(expectTimeGreater), ShouldBeTrue)
-		expectTimeLess := begin.Add(((WaitSec * 2) + 1) * time.Second)
+		expectTimeLess := exit.Add(((WaitSec * 2) + 1) * time.Second)
+		fmt.Printf("endtime:%v, expectTimeLess:%v\n", end, expectTimeLess)
 		So(end.Before(expectTimeLess), ShouldBeTrue)
 	})
 }
