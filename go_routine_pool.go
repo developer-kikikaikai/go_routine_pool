@@ -4,8 +4,8 @@
 package gorp
 
 import (
-	"errors"
 	"fmt"
+	"sync"
 )
 
 //Please create struct which has input parameter of go routine
@@ -20,24 +20,82 @@ type GoRoutineWorker interface {
 	Stop()
 }
 
-func RunWorker(numOfWorker int) (GoRoutineWorker, error) {
+func RunWorker(numOfWorker int) GoRoutineWorker {
 	worker := newWorker()
-	if err := worker.run(numOfWorker); err != nil {
-		return nil, err
-	}
-	return worker, nil
+	worker.run(numOfWorker)
+	return worker
+}
+
+type transportEvent interface {
+	do() (doesContinue bool)
+}
+
+type transportAction struct {
+	action Action
+}
+
+func (t *transportAction) do() (doesContinue bool) {
+	t.action.Do()
+	doesContinue = true
+	return
+}
+
+type transportFunction struct {
+	routine func(interface{})
+	input   interface{}
+}
+
+func (t *transportFunction) do() (doesContinue bool) {
+	t.routine(t.input)
+	doesContinue = true
+	return
+}
+
+type transportClose struct {
+}
+
+func (t *transportClose) do() (doesContinue bool) {
+	doesContinue = false
+	return
 }
 
 type goRoutineWorker struct {
+	ch chan transportEvent
+	wg *sync.WaitGroup //work group to stop worker
 }
 
 func newWorker() *goRoutineWorker {
-	//run thread
-	return &goRoutineWorker{}
+	worker := goRoutineWorker{}
+	worker.ch = make(chan transportEvent, 0)
+	worker.wg = &sync.WaitGroup{}
+	return &worker
 }
 
-func (worker *goRoutineWorker) run(numOfWorker int) error {
-	return errors.New("Not implement yet")
+func (worker *goRoutineWorker) run(numOfWorker int) {
+	//run thread
+	for i := 0; i < numOfWorker; i++ {
+		go func(worker *goRoutineWorker) {
+			//count work group to manage stopping
+			worker.wg.Add(1)
+			//run routine until stop
+			worker.runWorker()
+			//worker is done!
+			worker.wg.Done()
+		}(worker)
+	}
+}
+
+func (worker *goRoutineWorker) runWorker() {
+	for event := range worker.ch {
+		//do event action
+		doesContinue := event.do()
+
+		//if we don't continue, close channel
+		if !doesContinue {
+			//continue loop?
+			close(worker.ch)
+		}
+	}
 }
 
 func (worker *goRoutineWorker) GoAction(actor Action) {

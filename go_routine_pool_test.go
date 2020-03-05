@@ -65,8 +65,8 @@ func TestRunningWorkerWithGoAction(t *testing.T) {
 	var worker gorp.GoRoutineWorker
 	//Run worker
 	Convey("Check Worker is running with GoAction normally", t, func() {
-		_worker, err := gorp.RunWorker(NumOfWorker)
-		So(err, ShouldBeNil)
+		_worker := gorp.RunWorker(NumOfWorker)
+		So(_worker, ShouldNotBeNil)
 		worker = _worker
 		result := Result{}
 		expect := 0
@@ -111,8 +111,8 @@ func TestRunningWorkerWithGo(t *testing.T) {
 	var worker gorp.GoRoutineWorker
 	//Run worker
 	Convey("Check Worker is running with Go normally", t, func() {
-		_worker, err := gorp.RunWorker(NumOfWorker)
-		So(err, ShouldBeNil)
+		_worker := gorp.RunWorker(NumOfWorker)
+		So(_worker, ShouldNotBeNil)
 		worker = _worker
 		result := Result{}
 		expect := 0
@@ -155,8 +155,8 @@ func TestRunningWorkerWithGo(t *testing.T) {
 
 func TestWorkerLimit(t *testing.T) {
 	Convey("Check running worker num", t, func() {
-		worker, err := gorp.RunWorker(NumOfWorker)
-		So(err, ShouldBeNil)
+		worker := gorp.RunWorker(NumOfWorker)
+		So(worker, ShouldNotBeNil)
 		result := Result{}
 		expect := 0
 		wg := &sync.WaitGroup{}
