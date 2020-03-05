@@ -30,22 +30,24 @@ func (r *Result) Result() int {
 	return r.result
 }
 
-type InputFunc struct {
+type testRunningActor struct {
 	value  int
 	result *Result
 	wg     *sync.WaitGroup
 }
 
-func runningWorkerTestFunc(input interface{}) {
-	in := input.(InputFunc)
+func (actor *testRunningActor) Do() {
 	time.Sleep(WaitSec * time.Second)
-	in.result.Add(in.value)
-	in.wg.Done()
+	actor.result.Add(actor.value)
+	actor.wg.Done()
 }
 
-func runningWorkerTestFuncClose(input interface{}) {
-	in := input.(*int)
-	(*in)++
+type testFuncCloseActor struct {
+	in int
+}
+
+func (actor *testFuncCloseActor) Do() {
+	actor.in++
 }
 
 func TestRunningWorker(t *testing.T) {
@@ -63,7 +65,7 @@ func TestRunningWorker(t *testing.T) {
 			value := 1 << i
 			//Get time before
 			wg.Add(1)
-			worker.Go(runningWorkerTestFunc, &InputFunc{value, &result, wg})
+			worker.Go(&testRunningActor{value, &result, wg})
 			//check this function is not blocked
 			end := time.Now()
 			expectTimeLess := begin.Add(time.Second)
@@ -84,11 +86,13 @@ func TestRunningWorker(t *testing.T) {
 
 		//Check stop
 		worker.Stop()
-		value := 0
-		worker.Go(runningWorkerTestFuncClose, &value)
+		actor := testFuncCloseActor{}
+		value := actor.in
+		worker.Go(&actor)
+		//actor won't update actor.in param because there is no worker routine
 		time.Sleep(time.Millisecond * 200)
 		//check result
-		So(value, ShouldEqual, 0)
+		So(actor.in, ShouldEqual, value)
 	})
 
 	Convey("Check running worker num", t, func() {
@@ -103,7 +107,7 @@ func TestRunningWorker(t *testing.T) {
 			value := 1 << i
 			//Get time before
 			wg.Add(1)
-			worker.Go(runningWorkerTestFunc, &InputFunc{value, &result, wg})
+			worker.Go(&testRunningActor{value, &result, wg})
 			//check this function is not blocked
 			end := time.Now()
 			expectTimeLess := begin.Add(time.Second)

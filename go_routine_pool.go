@@ -3,11 +3,18 @@
 // license that can be found in the LICENSE file.
 package gorp
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
+
+type Action interface {
+	Do()
+}
 
 type GoRoutineWorker interface {
 	//TODO: can we use variable parameters?
-	Go(routine func(interface{}), input interface{})
+	Go(actor Action)
 	Stop()
 }
 
@@ -31,9 +38,10 @@ func (worker *goRoutineWorker) run(numOfWorker int) error {
 	return errors.New("Not implement yet")
 }
 
-func (worker *goRoutineWorker) Go(routine func(interface{}), input interface{}) {
+func (worker *goRoutineWorker) Go(actor Action) {
 	//send routine + input to thread
-	routine(input)
+	fmt.Printf("Not implement yet\n")
+	actor.Do()
 }
 
 func (worker *goRoutineWorker) Stop() {
