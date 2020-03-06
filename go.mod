@@ -1,4 +1,4 @@
-module github.com/developer-kikikaikai/go_routine_pool
+module github.com/developer-kikikaikai/grworker
 
 go 1.14
 
