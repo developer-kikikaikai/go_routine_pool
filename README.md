@@ -1,17 +1,24 @@
-# go_routine_pool
-これは、go routineの実行数を制御する為のパッケージになります。
-
+# go_routine_pool (gorp)
 This is a package to save number of go routine.
 
-- なんで作ったの？go routineはとても優れた並列処理の仕組みで重宝してるのですが、低スペック環境で大量にgo routineを使っているとアクセス上限に引っかかることがあった。
-- threadpoolのような仕組みを作って対処した
-- 似たようなライブラリがあると嬉しいが、ピンとくるのが無かったので作ってみる。
-- 多少速さを意識した作りにできたらいいな
+Go routine is a wonderful functions to run featres parallel.  
+But sometimes our go code reaches the limit of go routines number. In this case, I want go routines to run such as threadpool.  
+I can't find those libraries, so I've tried to create it.
 
 # Installation
-セッティングの説明
 
-# Example
-使い方の解説
+Please import this package:
 
-# 
+```
+import "github.com/developer-kikikaikai/go_routine_pool"
+```
+
+If you don't use go modules (go mod), please get source code:
+
+```
+go get github.com/developer-kikikaikai/go_routine_pool
+```
+
+# Usage
+
+Write usage
