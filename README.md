@@ -1,9 +1,7 @@
-# go_routine_pool (gorp)
+# grworker (go routine worker)
 This is a package to save number of go routine.
 
-Go routine is a wonderful functions to run featres parallel.  
-But sometimes our go code reaches the limit of go routines number. In this case, I want go routines to run such as threadpool.  
-I can't find those libraries, so I've tried to create it.
+Go routine is a wonderful functions to run featres parallel, but sometimes our go code reaches the limit of go routines number. So I've tried to create it.
 
 # Installation
 
@@ -118,3 +116,7 @@ Finally, please call `worker.Stop()` to stop workers.
 ```
 	worker.Stop()
 ```
+
+# License
+
+MIT
