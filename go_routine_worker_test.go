@@ -1,4 +1,4 @@
-package gorp_test
+package grworker_test
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	gorp "github.com/developer-kikikaikai/go_routine_pool"
+	"github.com/developer-kikikaikai/grworker"
 
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -71,7 +71,7 @@ func runningWorkerTestFuncClose(input interface{}) {
 /**************************
  * functions for test code
  **************************/
-func getBeforeAfterGoAction(worker gorp.GoRoutineWorker, action gorp.Action) (time.Time, time.Time) {
+func getBeforeAfterGoAction(worker grworker.GoRoutineWorker, action grworker.Action) (time.Time, time.Time) {
 	before := time.Now()
 	worker.GoAction(action)
 	//check this function is not blocked
@@ -79,13 +79,13 @@ func getBeforeAfterGoAction(worker gorp.GoRoutineWorker, action gorp.Action) (ti
 	return before, after
 }
 
-func testNonBlockingGoAction(t *testing.T, worker gorp.GoRoutineWorker, action gorp.Action) {
+func testNonBlockingGoAction(t *testing.T, worker grworker.GoRoutineWorker, action grworker.Action) {
 	before, after := getBeforeAfterGoAction(worker, action)
 	expectTimeLess := before.Add(time.Second)
 	fmt.Printf("endtime:%v, expectTimeLess:%v\n", after, expectTimeLess)
 	So(after.Before(expectTimeLess), ShouldBeTrue)
 }
-func getBeforeAfterGo(worker gorp.GoRoutineWorker, routine func(interface{}), input interface{}) (time.Time, time.Time) {
+func getBeforeAfterGo(worker grworker.GoRoutineWorker, routine func(interface{}), input interface{}) (time.Time, time.Time) {
 	before := time.Now()
 	worker.Go(routine, input)
 	//check this function is not blocked
@@ -93,7 +93,7 @@ func getBeforeAfterGo(worker gorp.GoRoutineWorker, routine func(interface{}), in
 	return before, after
 }
 
-func testNonBlockingGo(t *testing.T, worker gorp.GoRoutineWorker, routine func(interface{}), input interface{}) {
+func testNonBlockingGo(t *testing.T, worker grworker.GoRoutineWorker, routine func(interface{}), input interface{}) {
 	before, after := getBeforeAfterGo(worker, routine, input)
 	expectTimeLess := before.Add(time.Second)
 	fmt.Printf("endtime:%v, expectTimeLess:%v\n", after, expectTimeLess)
@@ -104,10 +104,10 @@ func testNonBlockingGo(t *testing.T, worker gorp.GoRoutineWorker, routine func(i
  * Test code main
  **************************/
 func TestRunningWorkerWithGoAction(t *testing.T) {
-	var worker gorp.GoRoutineWorker
+	var worker grworker.GoRoutineWorker
 	//Run worker
 	Convey("Check Worker is running with GoAction normally", t, func() {
-		_worker := gorp.RunWorker(NumOfWorker, BufferSize)
+		_worker := grworker.RunWorker(NumOfWorker, BufferSize)
 		So(_worker, ShouldNotBeNil)
 		worker = _worker
 		result := Result{}
@@ -148,10 +148,10 @@ func TestRunningWorkerWithGoAction(t *testing.T) {
 }
 
 func TestRunningWorkerWithGo(t *testing.T) {
-	var worker gorp.GoRoutineWorker
+	var worker grworker.GoRoutineWorker
 	//Run worker
 	Convey("Check Worker is running with Go normally", t, func() {
-		_worker := gorp.RunWorker(NumOfWorker, BufferSize)
+		_worker := grworker.RunWorker(NumOfWorker, BufferSize)
 		So(_worker, ShouldNotBeNil)
 		worker = _worker
 		result := Result{}
@@ -194,7 +194,7 @@ func TestRunningWorkerWithGo(t *testing.T) {
 
 func TestWorkerLimit(t *testing.T) {
 	Convey("Check running worker num", t, func() {
-		worker := gorp.RunWorker(NumOfWorker, NumOfWorker+1)
+		worker := grworker.RunWorker(NumOfWorker, NumOfWorker+1)
 		So(worker, ShouldNotBeNil)
 		result := Result{}
 		expect := 0
@@ -225,7 +225,7 @@ func TestWorkerLimit(t *testing.T) {
 	})
 
 	Convey("Check running worker buffer size", t, func() {
-		worker := gorp.RunWorker(NumOfWorker, 0)
+		worker := grworker.RunWorker(NumOfWorker, 0)
 		So(worker, ShouldNotBeNil)
 		result := Result{}
 		expect := 0
