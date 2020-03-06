@@ -12,12 +12,14 @@ import (
 )
 
 const (
-	WaitSec     = 2
+	WaitMsec    = 1000
 	NumOfWorker = 4
 	BufferSize  = NumOfWorker
 )
 
-/* Structure to test running thread */
+/**************************
+ * Structure to test running thread
+ **************************/
 type Result struct {
 	sync.Mutex
 	result int
@@ -39,9 +41,11 @@ type testRunningActor struct {
 	wg     *sync.WaitGroup
 }
 
-/* Define actions */
+/**************************
+ * Definition Action of routine
+ **************************/
 func (actor *testRunningActor) Do() {
-	time.Sleep(WaitSec * time.Second)
+	time.Sleep(WaitMsec * time.Millisecond)
 	actor.result.Add(actor.value)
 	actor.wg.Done()
 }
@@ -64,6 +68,41 @@ func runningWorkerTestFuncClose(input interface{}) {
 	in.Do()
 }
 
+/**************************
+ * functions for test code
+ **************************/
+func getBeforeAfterGoAction(worker gorp.GoRoutineWorker, action gorp.Action) (time.Time, time.Time) {
+	before := time.Now()
+	worker.GoAction(action)
+	//check this function is not blocked
+	after := time.Now()
+	return before, after
+}
+
+func testNonBlockingGoAction(t *testing.T, worker gorp.GoRoutineWorker, action gorp.Action) {
+	before, after := getBeforeAfterGoAction(worker, action)
+	expectTimeLess := before.Add(time.Second)
+	fmt.Printf("endtime:%v, expectTimeLess:%v\n", after, expectTimeLess)
+	So(after.Before(expectTimeLess), ShouldBeTrue)
+}
+func getBeforeAfterGo(worker gorp.GoRoutineWorker, routine func(interface{}), input interface{}) (time.Time, time.Time) {
+	before := time.Now()
+	worker.Go(routine, input)
+	//check this function is not blocked
+	after := time.Now()
+	return before, after
+}
+
+func testNonBlockingGo(t *testing.T, worker gorp.GoRoutineWorker, routine func(interface{}), input interface{}) {
+	before, after := getBeforeAfterGo(worker, routine, input)
+	expectTimeLess := before.Add(time.Second)
+	fmt.Printf("endtime:%v, expectTimeLess:%v\n", after, expectTimeLess)
+	So(after.Before(expectTimeLess), ShouldBeTrue)
+}
+
+/**************************
+ * Test code main
+ **************************/
 func TestRunningWorkerWithGoAction(t *testing.T) {
 	var worker gorp.GoRoutineWorker
 	//Run worker
@@ -79,14 +118,7 @@ func TestRunningWorkerWithGoAction(t *testing.T) {
 			value := 1 << i
 			//Get time before
 			wg.Add(1)
-			before := time.Now()
-			worker.GoAction(&testRunningActor{value, &result, wg})
-			//check this function is not blocked
-			end := time.Now()
-			expectTimeLess := before.Add(time.Second)
-			fmt.Printf("endtime:%v, expectTimeLess:%v\n", end, expectTimeLess)
-			So(end.Before(expectTimeLess), ShouldBeTrue)
-
+			testNonBlockingGoAction(t, worker, &testRunningActor{value, &result, wg})
 			//update expect value
 			expect += value
 		}
@@ -96,10 +128,10 @@ func TestRunningWorkerWithGoAction(t *testing.T) {
 		So(result.Result(), ShouldEqual, expect)
 		end := time.Now()
 		//result : WaitSec < do all action < WaitSec + 1 sec
-		expectTimeGreater := begin.Add(WaitSec * time.Second)
+		expectTimeGreater := begin.Add(WaitMsec * time.Millisecond)
 		fmt.Printf("endtime:%v, expectTimeGreater:%v\n", end, expectTimeGreater)
 		So(end.After(expectTimeGreater), ShouldBeTrue)
-		expectTimeLess := exit.Add((WaitSec + 1) * time.Second)
+		expectTimeLess := exit.Add((WaitMsec + 1000) * time.Millisecond)
 		fmt.Printf("endtime:%v, expectTimeLess:%v\n", end, expectTimeLess)
 		So(end.Before(expectTimeLess), ShouldBeTrue)
 
@@ -130,13 +162,7 @@ func TestRunningWorkerWithGo(t *testing.T) {
 			value := 1 << i
 			//Get time before
 			wg.Add(1)
-			before := time.Now()
-			worker.Go(runningWorkerTestFunc, &testRunningActor{value, &result, wg})
-			//check this function is not blocked
-			end := time.Now()
-			expectTimeLess := before.Add(time.Second)
-			fmt.Printf("endtime:%v, expectTimeLess:%v\n", end, expectTimeLess)
-			So(end.Before(expectTimeLess), ShouldBeTrue)
+			testNonBlockingGo(t, worker, runningWorkerTestFunc, &testRunningActor{value, &result, wg})
 
 			//update expect value
 			expect += value
@@ -147,10 +173,10 @@ func TestRunningWorkerWithGo(t *testing.T) {
 		So(result.Result(), ShouldEqual, expect)
 		end := time.Now()
 		//result : WaitSec < do all action < WaitSec + 1 sec
-		expectTimeGreater := begin.Add(WaitSec * time.Second)
+		expectTimeGreater := begin.Add(WaitMsec * time.Millisecond)
 		fmt.Printf("endtime:%v, expectTimeGreater:%v\n", end, expectTimeGreater)
 		So(end.After(expectTimeGreater), ShouldBeTrue)
-		expectTimeLess := exit.Add((WaitSec + 1) * time.Second)
+		expectTimeLess := exit.Add((WaitMsec + 1000) * time.Millisecond)
 		fmt.Printf("endtime:%v, expectTimeLess:%v\n", end, expectTimeLess)
 		So(end.Before(expectTimeLess), ShouldBeTrue)
 
@@ -178,13 +204,7 @@ func TestWorkerLimit(t *testing.T) {
 			value := 1 << i
 			//Get time before
 			wg.Add(1)
-			before := time.Now()
-			worker.GoAction(&testRunningActor{value, &result, wg})
-			//check this function is not blocked
-			end := time.Now()
-			expectTimeLess := before.Add(time.Second)
-			fmt.Printf("endtime:%v, expectTimeLess:%v\n", end, expectTimeLess)
-			So(end.Before(expectTimeLess), ShouldBeTrue)
+			testNonBlockingGoAction(t, worker, &testRunningActor{value, &result, wg})
 			//update expect value
 			expect += value
 		}
@@ -196,10 +216,10 @@ func TestWorkerLimit(t *testing.T) {
 		end := time.Now()
 		//result : WaitSec * 2 < do all action < WaitSec * 2 + 1 sec
 		// Because 1 action was blocked
-		expectTimeGreater := begin.Add(WaitSec * 2 * time.Second)
+		expectTimeGreater := begin.Add(WaitMsec * 2 * time.Millisecond)
 		fmt.Printf("endtime:%v, expectTimeGreater:%v\n", end, expectTimeGreater)
 		So(end.After(expectTimeGreater), ShouldBeTrue)
-		expectTimeLess := exit.Add(((WaitSec * 2) + 1) * time.Second)
+		expectTimeLess := exit.Add(((WaitMsec * 2) + 1000) * time.Millisecond)
 		fmt.Printf("endtime:%v, expectTimeLess:%v\n", end, expectTimeLess)
 		So(end.Before(expectTimeLess), ShouldBeTrue)
 	})
@@ -215,25 +235,17 @@ func TestWorkerLimit(t *testing.T) {
 			value := 1 << i
 			//Get time before
 			wg.Add(1)
-			before := time.Now()
-			worker.GoAction(&testRunningActor{value, &result, wg})
-			//check this function is not blocked
-			end := time.Now()
-			expectTimeLess := before.Add(time.Second)
-			fmt.Printf("endtime:%v, expectTimeLess:%v\n", end, expectTimeLess)
-			So(end.Before(expectTimeLess), ShouldBeTrue)
+			testNonBlockingGoAction(t, worker, &testRunningActor{value, &result, wg})
 			//update expect value
 			expect += value
 		}
 		{
 			value := 1 << NumOfWorker
 			wg.Add(1)
-			before := time.Now()
-			worker.GoAction(&testRunningActor{value, &result, wg})
-			end := time.Now()
-			expectTimeGreater := before.Add(time.Second * WaitSec)
-			fmt.Printf("endtime:%v, expectTimeGreater:%v\n", end, expectTimeGreater)
-			So(end.After(expectTimeGreater), ShouldBeTrue)
+			_, after := getBeforeAfterGoAction(worker, &testRunningActor{value, &result, wg})
+			expectTimeGreater := begin.Add(time.Millisecond * WaitMsec)
+			fmt.Printf("endtime:%v, expectTimeGreater:%v\n", after, expectTimeGreater)
+			So(after.After(expectTimeGreater), ShouldBeTrue)
 			expect += value
 		}
 
@@ -244,10 +256,10 @@ func TestWorkerLimit(t *testing.T) {
 		end := time.Now()
 		//result : WaitSec * 2 < do all action < WaitSec * 2 + 1 sec
 		// Because 1 action was blocked
-		expectTimeGreater := begin.Add(WaitSec * 2 * time.Second)
+		expectTimeGreater := begin.Add(WaitMsec * 2 * time.Millisecond)
 		fmt.Printf("endtime:%v, expectTimeGreater:%v\n", end, expectTimeGreater)
 		So(end.After(expectTimeGreater), ShouldBeTrue)
-		expectTimeLess := exit.Add(((WaitSec * 2) + 1) * time.Second)
+		expectTimeLess := exit.Add(((WaitMsec * 2) + 1000) * time.Millisecond)
 		fmt.Printf("endtime:%v, expectTimeLess:%v\n", end, expectTimeLess)
 		So(end.Before(expectTimeLess), ShouldBeTrue)
 	})
