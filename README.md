@@ -1,4 +1,4 @@
-![Build Status](https://github.com/developer-kikikaikai/grworker/workflows/Go/badge.svg)]
+![Build Status](https://github.com/developer-kikikaikai/grworker/workflows/Go/badge.svg)
 [![GoDoc](https://godoc.org/github.com/developer-kikikaikai/grworker?status.svg)](https://godoc.org/github.com/developer-kikikaikai/grworker)
 [![license](https://img.shields.io/badge/license-MIT-4183c4.svg)](https://github.com/developer-kikikaikai/grworker/blob/master/LICENSE)
 
