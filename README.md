@@ -72,7 +72,7 @@ And call `worker.Go` with the function and a parameter (pointer)
 	worker.Go(_say, &msg)
 ```
 
-Please see [example/example_go.go](https://github.com/developer-kikikaikai/grworker/blob/master/example/example_go.go)
+Please see [example/go/example_go.go](https://github.com/developer-kikikaikai/grworker/blob/master/example/go/example_go.go)
 
 This usage is nearly like go func. But we need to cast interface in function.
 
@@ -107,7 +107,7 @@ And call `worker.GoAction` with the instance
 	worker.GoAction(&action{"world"})
 ```
 
-Please see [example/example_go_action.go](https://github.com/developer-kikikaikai/grworker/blob/master/example/example_go_action.go)
+Please see [example/action/example_go_action.go](https://github.com/developer-kikikaikai/grworker/blob/master/example/action/example_go_action.go)
 
 ## 3. Stop workers
 
