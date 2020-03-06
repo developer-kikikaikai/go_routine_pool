@@ -22,7 +22,7 @@ func (a *action) Do() {
 	say(a.s)
 }
 
-func main() {
+func ExampleGoAction() {
 
 	numOfWorker := 4 //how many thread do you want to run?
 	bufferSize := 4  //how many buffer size do you want to use?
@@ -33,4 +33,8 @@ func main() {
 	say("hello")
 	worker.Stop()
 	fmt.Println("vim-go")
+}
+
+func main() {
+	ExampleGoAction()
 }

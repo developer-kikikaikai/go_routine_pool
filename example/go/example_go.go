@@ -18,8 +18,7 @@ func _say(s interface{}) {
 	say(*_s)
 }
 
-func main() {
-
+func ExampleGo() {
 	numOfWorker := 4 //how many thread do you want to run?
 	bufferSize := 4  //how many buffer size do you want to use?
 	worker := grworker.RunWorker(numOfWorker, bufferSize)
@@ -30,4 +29,8 @@ func main() {
 	say("hello")
 	worker.Stop()
 	fmt.Println("vim-go")
+}
+
+func main() {
+	ExampleGo()
 }
