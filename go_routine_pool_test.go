@@ -12,8 +12,9 @@ import (
 )
 
 const (
-	WaitSec     = 3
+	WaitSec     = 2
 	NumOfWorker = 4
+	BufferSize  = NumOfWorker
 )
 
 /* Structure to test running thread */
@@ -67,7 +68,7 @@ func TestRunningWorkerWithGoAction(t *testing.T) {
 	var worker gorp.GoRoutineWorker
 	//Run worker
 	Convey("Check Worker is running with GoAction normally", t, func() {
-		_worker := gorp.RunWorker(NumOfWorker)
+		_worker := gorp.RunWorker(NumOfWorker, BufferSize)
 		So(_worker, ShouldNotBeNil)
 		worker = _worker
 		result := Result{}
@@ -118,7 +119,7 @@ func TestRunningWorkerWithGo(t *testing.T) {
 	var worker gorp.GoRoutineWorker
 	//Run worker
 	Convey("Check Worker is running with Go normally", t, func() {
-		_worker := gorp.RunWorker(NumOfWorker)
+		_worker := gorp.RunWorker(NumOfWorker, BufferSize)
 		So(_worker, ShouldNotBeNil)
 		worker = _worker
 		result := Result{}
@@ -167,7 +168,7 @@ func TestRunningWorkerWithGo(t *testing.T) {
 
 func TestWorkerLimit(t *testing.T) {
 	Convey("Check running worker num", t, func() {
-		worker := gorp.RunWorker(NumOfWorker)
+		worker := gorp.RunWorker(NumOfWorker, NumOfWorker+1)
 		So(worker, ShouldNotBeNil)
 		result := Result{}
 		expect := 0
@@ -185,6 +186,54 @@ func TestWorkerLimit(t *testing.T) {
 			fmt.Printf("endtime:%v, expectTimeLess:%v\n", end, expectTimeLess)
 			So(end.Before(expectTimeLess), ShouldBeTrue)
 			//update expect value
+			expect += value
+		}
+
+		exit := time.Now()
+		wg.Wait()
+		//Check result
+		So(result.Result(), ShouldEqual, expect)
+		end := time.Now()
+		//result : WaitSec * 2 < do all action < WaitSec * 2 + 1 sec
+		// Because 1 action was blocked
+		expectTimeGreater := begin.Add(WaitSec * 2 * time.Second)
+		fmt.Printf("endtime:%v, expectTimeGreater:%v\n", end, expectTimeGreater)
+		So(end.After(expectTimeGreater), ShouldBeTrue)
+		expectTimeLess := exit.Add(((WaitSec * 2) + 1) * time.Second)
+		fmt.Printf("endtime:%v, expectTimeLess:%v\n", end, expectTimeLess)
+		So(end.Before(expectTimeLess), ShouldBeTrue)
+	})
+
+	Convey("Check running worker buffer size", t, func() {
+		worker := gorp.RunWorker(NumOfWorker, 0)
+		So(worker, ShouldNotBeNil)
+		result := Result{}
+		expect := 0
+		wg := &sync.WaitGroup{}
+		begin := time.Now()
+		for i := 0; i < NumOfWorker; i++ {
+			value := 1 << i
+			//Get time before
+			wg.Add(1)
+			before := time.Now()
+			worker.GoAction(&testRunningActor{value, &result, wg})
+			//check this function is not blocked
+			end := time.Now()
+			expectTimeLess := before.Add(time.Second)
+			fmt.Printf("endtime:%v, expectTimeLess:%v\n", end, expectTimeLess)
+			So(end.Before(expectTimeLess), ShouldBeTrue)
+			//update expect value
+			expect += value
+		}
+		{
+			value := 1 << NumOfWorker
+			wg.Add(1)
+			before := time.Now()
+			worker.GoAction(&testRunningActor{value, &result, wg})
+			end := time.Now()
+			expectTimeGreater := before.Add(time.Second * WaitSec)
+			fmt.Printf("endtime:%v, expectTimeGreater:%v\n", end, expectTimeGreater)
+			So(end.After(expectTimeGreater), ShouldBeTrue)
 			expect += value
 		}
 

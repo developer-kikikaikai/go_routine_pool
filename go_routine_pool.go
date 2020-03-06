@@ -21,8 +21,8 @@ type GoRoutineWorker interface {
 	Stop()
 }
 
-func RunWorker(numOfWorker int) GoRoutineWorker {
-	worker := newWorker()
+func RunWorker(numOfWorker int, bufferSize int) GoRoutineWorker {
+	worker := newWorker(bufferSize)
 	worker.run(numOfWorker)
 	return worker
 }
@@ -91,9 +91,9 @@ type goRoutineWorker struct {
 	action workerAction
 }
 
-func newWorker() *goRoutineWorker {
+func newWorker(bufferSize int) *goRoutineWorker {
 	worker := goRoutineWorker{}
-	worker.ch = make(chan transportEvent)
+	worker.ch = make(chan transportEvent, bufferSize)
 	worker.wg = &sync.WaitGroup{}
 	worker.action = &workerNormalAction{worker.ch, worker.wg}
 	return &worker
