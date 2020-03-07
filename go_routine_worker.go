@@ -28,53 +28,44 @@ func RunWorker(numOfWorker int, bufferSize int) GoRoutineWorker {
  * internal definition
  **************************************************************/
 // transportEvent is an interface to transport action event of GoAction/Go. Worker receive this interface from channel, and call do()
-type transportEvent interface {
-	// do is a function called by worker
-	do()
-}
+type messageID int
 
-// transportAction is an message to transport requested event of GoAction
-type transportAction struct {
+const (
+	msgAction messageID = iota
+	msgFunction
+	msgClose
+)
+
+type transportMessage struct {
+	msgType messageID
+
+	//For action field
 	actor Action
-}
 
-func (t *transportAction) do() {
-	t.actor.Do()
-}
-
-// transportFunction is an message to transport requested event of Go
-type transportFunction struct {
+	//For function field
 	routine func(interface{})
 	input   interface{}
 }
 
-func (t *transportFunction) do() {
-	t.routine(t.input)
+func doMsgAction(actor Action) {
+	actor.Do()
 }
 
-// transportClose is an message to transport close event
-type transportClose struct {
-	ch chan transportEvent
-}
-
-func (t *transportClose) do() {
-	close(t.ch)
+func doMsgFunction(routine func(interface{}), input interface{}) {
+	routine(input)
 }
 
 // goRoutineWorker is an instance of GoRoutineWorker
 type goRoutineWorker struct {
-	ch   chan transportEvent  // ch is a channel to communicate worker thread
-	wg   *sync.WaitGroup      // wg is a work group to stop worker
-	send func(transportEvent) // send is a sender function with message transportEvent
-	wait func()               //wait is a function to wait closing workers
+	ch chan transportMessage // ch is a channel to communicate worker thread
+	wg *sync.WaitGroup       // wg is a work group to stop worker
 }
 
 // newWorker is a function to create goRoutineWorker instance
 func newWorker(bufferSize int) *goRoutineWorker {
 	worker := goRoutineWorker{}
-	worker.ch = make(chan transportEvent, bufferSize)
+	worker.ch = make(chan transportMessage, bufferSize)
 	worker.wg = &sync.WaitGroup{}
-	worker.setActualFunc()
 	return &worker
 }
 
@@ -95,42 +86,42 @@ func workerMain(worker *goRoutineWorker) {
 
 func (worker *goRoutineWorker) runWorker() {
 	for event := range worker.ch {
-		event.do()
+		switch event.msgType {
+		case msgAction:
+			doMsgAction(event.actor)
+		case msgFunction:
+			doMsgFunction(event.routine, event.input)
+		case msgClose:
+			close(worker.ch)
+		default:
+			//unknown
+		}
 	}
 }
 
-// setActualFunc is a function to set actual send/wait function
-func (worker *goRoutineWorker) setActualFunc() {
-	worker.send = worker.sendActual
-	worker.wait = worker.waitActual
+func (worker *goRoutineWorker) send(event transportMessage) {
+	if worker.ch != nil {
+		worker.ch <- event
+	}
 }
-func (worker *goRoutineWorker) sendActual(event transportEvent) {
-	worker.ch <- event
-}
-func (worker *goRoutineWorker) waitActual() {
-	worker.wg.Wait()
-}
-
-// setNoFunc is a function to set no-action function
-func (worker *goRoutineWorker) setNoFunc() {
-	worker.send = worker.notSend
-	worker.wait = worker.notWait
-}
-func (worker *goRoutineWorker) notSend(event transportEvent) {
-}
-func (worker *goRoutineWorker) notWait() {
+func (worker *goRoutineWorker) wait() {
+	if worker.wg != nil {
+		worker.wg.Wait()
+	}
 }
 
 // implement interface
 func (worker *goRoutineWorker) GoAction(actor Action) {
-	event := &transportAction{
-		actor: actor,
+	event := transportMessage{
+		msgType: msgAction,
+		actor:   actor,
 	}
 	worker.send(event)
 }
 
 func (worker *goRoutineWorker) Go(routine func(interface{}), input interface{}) {
-	event := &transportFunction{
+	event := transportMessage{
+		msgType: msgFunction,
 		routine: routine,
 		input:   input,
 	}
@@ -138,8 +129,11 @@ func (worker *goRoutineWorker) Go(routine func(interface{}), input interface{}) 
 }
 
 func (worker *goRoutineWorker) Stop() {
-	worker.send(&transportClose{worker.ch})
+	event := transportMessage{
+		msgType: msgClose,
+	}
+	worker.send(event)
 	worker.wait()
-	//after all, set function not to do anything
-	worker.setNoFunc()
+	worker.ch = nil
+	worker.wg = nil
 }
